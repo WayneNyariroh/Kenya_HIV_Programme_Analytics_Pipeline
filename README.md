@@ -417,11 +417,11 @@ These numbers describe the executed notebook run. Live WHO, World Bank, and Glob
 
 ## Key Insights
 
-1. Kenya's ART coverage rose from below 10% in 2005 to above 80% by the early 2020s, the fastest gain in this five-country group.
+1. Kenya's ART coverage rose from approximately 4% in 2005 to above 88% by the early 2020s, the fastest gain in this five-country group. With the estimated number of people receiving ART increasing from about 54,000 to 1.32 million.
 2. HIV incidence fell across every programme era. The COVID-19 period slowed that decline, and the gap to the UNAIDS 2030 target of 0.1 new infections per 1,000 remains wide.
 3. Total HCW per 1,000 (`total_hcw_per_1000`) tracks ART coverage gains more consistently than health expenditure per capita across these five countries. Rwanda's gains correlate with its community health worker deployment, not just spending.
-4. Global Fund HIV disbursements for Kenya peaked in the 2015-2019 cycle and have not grown since. The RSSH component share has grown, meaning a larger share of funding is going to health system strengthening rather than direct HIV programming.
-5. National ART coverage above 80% sits alongside sub-50% coverage in northern ASAL counties. The national figure does not capture that.
+4. Higher overall health expenditure does not transalte mechanically into higher ART coverage.
+5. Global Fund financing represents a substantial part of the observed HIV response; more than USD 1.0 billion in HIV-component disbursements to Kenya thus far. With the HIV-component disbursements for Kenya peaked in the 2015-2019 cycle and have not grown since. The RSSH component share has grown, meaning a larger share of funding is going to health system strengthening rather than direct HIV programming.
 
 ---
 

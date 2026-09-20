@@ -5,11 +5,9 @@
 
 ## Executive Summary
 
-Kenya has an estimated 1.4 to 1.6 million people living with HIV, one of the highest country totals in sub-Saharan Africa. It also has one of the more documented ART scale-up trajectories on the continent. Coverage went from below 10% in 2005 to above 80% by the early 2020s. AIDS-related deaths fell substantially in that period, and PEPFAR and the Global Fund have both used Kenya as a programming reference across East Africa.
+This project combines national HIV, health-system, and financing data for Kenya from 2000 to 2023. Kenya is compared with Uganda, Tanzania, Ethiopia, and Rwanda where a source provides comparable observations.
 
-The national numbers conceal real gaps. Over 200,000 people living with HIV are not on ART. County-level coverage is uneven enough that the national average hides rates below 50% in some northern counties. The health workforce sits below the WHO minimum of 4.45 per 1,000. Global Fund HIV disbursements to Kenya peaked in the 2015-2019 grant cycle and have not grown since, which puts pressure on domestic financing commitments under Kenya's UHC rollout.
-
-This pipeline pulls live data from four public health data systems (WHO GHO, World Bank, UNAIDS AIDSInfo, and the Global Fund Data Service), stages it in DuckDB, builds HIV cascade and health system features, and produces charts and SQL-queryable tables for programme reviews, donor reporting, and strategic planning.
+The pipeline draws from WHO GHO, the World Bank, UNAIDS AIDSInfo, and the Global Fund Data Service. It stages the data in DuckDB, creates HIV and health-system features, and produces charts and SQL-queryable tables for programme reviews, donor reporting, and planning.
 
 ---
 
@@ -21,7 +19,7 @@ This comes up at quarterly PEPFAR reviews, KASF II annual assessments, and NSDCC
 
 Three gaps drove this design.
 
-**No single indicator view across sources.** WHO GHO, World Bank, and IHME each produce HIV estimates that partly overlap but differ in method and coverage year. Analysts usually pick one source and treat it as authoritative, which means the divergence between estimates goes unexamined. A staging layer with explicit source tagging makes the comparison visible rather than assumed away.
+**No single indicator view across sources.** WHO GHO, World Bank, and UNAIDS each produce HIV estimates that partly overlap but differ in method and coverage year. Analysts usually pick one source and treat it as authoritative, which means the divergence between estimates goes unexamined. A staging layer with explicit source tagging makes the comparison visible rather than assumed away.
 
 **No financing-to-outcomes linkage.** Global Fund disbursement data sits in the Fund's own portal. Health outcome trends sit in WHO and the World Bank. Joining them to ask whether higher investment years correlate with faster ART gains requires a cross-system extract that most programme teams have not built.
 
@@ -46,7 +44,7 @@ The analysis is descriptive and exploratory. Correlations and programme-era over
 
 ## Objectives
 
-1. Pull HIV burden, health system capacity, and financing data from four public APIs into a single DuckDB database with no manual download steps, and make the pipeline fully reproducible on rerun.
+1. Pull HIV burden, health-system capacity, and financing data from four public sources into a single DuckDB database with no manual download steps, and make the pipeline reproducible on rerun.
 
 2. Build a Kenya HIV treatment cascade with derived features (treatment gap, year-on-year ART coverage change, AIDS case-fatality proxy, 95-95-95 progress proxies) that align with UNAIDS and NASCOP reporting frameworks.
 
@@ -69,7 +67,7 @@ All four sources are publicly accessible without authentication.
 | Field | Detail |
 |-------|--------|
 | **Base URL** | `https://ghoapi.azureedge.net/api/` |
-| **Protocol** | OData v4 REST — filter with `$filter=SpatialDim eq 'KEN'` |
+| **Protocol** | OData v4 REST; filter with `$filter=SpatialDim eq 'KEN'` |
 | **Auth** | None |
 | **Format** | JSON |
 | **Documentation** | https://www.who.int/data/gho/info/gho-odata-api |
@@ -79,11 +77,11 @@ All four sources are publicly accessible without authentication.
 | Code | Description | Example URL |
 |------|-------------|-------------|
 | `HIV_0000000001` | People living with HIV, all ages (estimate with CI) | `https://ghoapi.azureedge.net/api/HIV_0000000001?$filter=SpatialDim eq 'KEN'` |
-| `HIV_0000000006` | HIV prevalence %, adults 15–49 | `https://ghoapi.azureedge.net/api/HIV_0000000006?$filter=SpatialDim eq 'KEN'` |
-| `HIV_0000000007` | Reported number on ART | `https://ghoapi.azureedge.net/api/HIV_0000000007?$filter=SpatialDim eq 'KEN'` |
-| `HIV_0000000011` | ART coverage % among PLHIV | `https://ghoapi.azureedge.net/api/HIV_0000000011?$filter=SpatialDim eq 'KEN'` |
-| `HIV_0000000024` | New HIV infections per year (estimate) | `https://ghoapi.azureedge.net/api/HIV_0000000024?$filter=SpatialDim eq 'KEN'` |
-| `HIV_0000000026` | AIDS-related deaths per year (estimate) | `https://ghoapi.azureedge.net/api/HIV_0000000026?$filter=SpatialDim eq 'KEN'` |
+| `MDG_0000000029` | HIV prevalence %, adults 15–49 | `https://ghoapi.azureedge.net/api/MDG_0000000029?$filter=SpatialDim eq 'KEN'` |
+| `HIV_0000000009` | Reported number on ART | `https://ghoapi.azureedge.net/api/HIV_0000000009?$filter=SpatialDim eq 'KEN'` |
+| `HIV_ARTCOVERAGE` | ART coverage % among PLHIV | `https://ghoapi.azureedge.net/api/HIV_ARTCOVERAGE?$filter=SpatialDim eq 'KEN'` |
+| `HIV_0000000026` | New HIV infections per year (estimate) | `https://ghoapi.azureedge.net/api/HIV_0000000026?$filter=SpatialDim eq 'KEN'` |
+| `HIV_0000000006` | AIDS-related deaths per year (estimate) | `https://ghoapi.azureedge.net/api/HIV_0000000006?$filter=SpatialDim eq 'KEN'` |
 | `WHOSIS_000001` | Life expectancy at birth | `https://ghoapi.azureedge.net/api/WHOSIS_000001?$filter=SpatialDim eq 'KEN'` |
 
 Countries: KEN, UGA, TZA, ETH, RWA (East Africa). Indicator catalogue: `https://ghoapi.azureedge.net/api/Indicator`
@@ -123,24 +121,21 @@ Multi-country calls use `;`-separated ISO3 codes: `KEN;UGA;TZA;ETH;RWA`
 |-------|--------|
 | **URL** | `https://aidsinfo.unaids.org/public/documents/Estimates_2026_en.zip` |
 | **Auth** | None |
-| **Format** | ZIP containing Excel workbook(s) — wide format, countries as rows, years as columns |
+| **Format** | ZIP containing a CSV file in long format |
 | **Data portal** | https://aidsinfo.unaids.org/ |
 
-> **Note on the previous source:** The OWID per-chart CSV API (`ourworldindata.org/grapher/`) returns 403 Forbidden in automated requests. The legacy `owid/owid-datasets` GitHub repository was also deprecated (404). So I found the UNAIDS AIDSInfo to be the authoritative replacement and a direct improvement: it includes 95-95-95 cascade figures that the OWID/IHME dataset did not cover.
+> **Implementation note:** UNAIDS AIDSInfo is the authoritative source used for the UNAIDS estimates staged by this pipeline. The current extract loads the four indicators listed below; authoritative 95-95-95 cascade measures remain a planned extension.
 
 **Indicators extracted:**
 
-| Sheet name (partial match) | Metric label | Notes |
-|----------------------------|--------------|-------|
-| People living with HIV | `unaids_plhiv` | Point estimate |
-| New HIV infections | `unaids_new_infections` | Point estimate |
-| AIDS-related deaths | `unaids_aids_deaths` | Point estimate |
-| Antiretroviral therapy | `unaids_art_coverage_pct` | % of PLHIV on ART |
-| Knowledge of HIV status | `unaids_diagnosed_pct` | First 95 |
-| On antiretroviral therapy | `unaids_on_art_pct` | Second 95 (conditional on knowing status) |
-| Viral suppression | `unaids_virally_suppressed_pct` | Third 95 |
+| Indicator code | Metric label | Notes |
+|----------------|--------------|-------|
+| `PLWH` | `unaids_plhiv` | Point estimate |
+| `NEW_INFECTIONS` | `unaids_new_infections` | Point estimate |
+| `AIDS_DEATHS` | `unaids_aids_deaths` | Point estimate |
+| `AIDS_MORTALITY_1000_POP` | `unaids_aids_mortality_per_1000` | Rate |
 
-The pipeline takes point estimates only; lower and upper bounds are present in the Excel but not staged. Sheet names are matched by partial string (case-insensitive), so the parser survives minor naming changes between annual releases. The `fact_unaids_cascade` table computes the 95-95-95 composite (share of PLHIV virally suppressed) from these three cascade columns.
+The pipeline stages central, lower, and upper estimates where available. It reads the source CSV in chunks and retains the selected country, indicator, and year records.
 
 ---
 
@@ -160,8 +155,8 @@ The pipeline takes point estimates only; lower and upper bounds are present in t
 
 | Endpoint | Description | Example URL |
 |----------|-------------|-------------|
-| `VGrantAgreements` | Grant agreements by country, component, recipient, status, budget vs disbursement | `https://fetch.theglobalfund.org/v4.2/odata/VGrantAgreements?$filter=geographicAreaCode_ISO3 eq 'KEN'&$format=json` |
-| `VDisbursements` | Actual disbursements by grant, year, and quarter | `https://fetch.theglobalfund.org/v4.2/odata/VDisbursements?$filter=geographicAreaCode_ISO3 eq 'KEN'&$format=json` |
+| `Grants` | Kenya grant metadata and implementation periods | `https://fetch.theglobalfund.org/v4.2/odata/Grants?$filter=geography/code eq 'KEN'` |
+| `AllFinancialIndicators` | Financial records for each implementation period; rows are filtered to `Disbursement_ReferenceRate` | `https://fetch.theglobalfund.org/v4.2/odata/AllFinancialIndicators?$filter=recordId eq {implementation_period_id}` |
 
 Supports `$filter`, `$select`, `$top`, `$orderby`. The notebook includes a schema probe step that prints live field names before the full pull, which catches any API version changes before they silently break the extraction.
 
@@ -191,7 +186,7 @@ The staging layer works the way it does because DuckDB queries pandas DataFrames
 
 The HIV cascade features rely on `LAG()`, `FIRST_VALUE()`, and cumulative `SUM() OVER (PARTITION BY ... ORDER BY year)`. These are standard SQL in DuckDB. The pandas equivalent requires `.groupby().transform()` with custom lambdas and careful index alignment, which is more code, harder to audit, and easier to get wrong across multi-country partitions.
 
-The pipeline writes to `kenya_health_data.duckdb`. After it runs, every table from raw staging through the model layer is queryable from the DuckDB CLI or any BI tool with a DuckDB connector. A downstream analyst in your team can run `SELECT * FROM feat_hiv_cascade WHERE country_iso3 = 'KEN'` without touching the notebook. In M&E work, where data lineage questions come up at every review, that matters.
+The pipeline writes to `database/kenya_health_data.duckdb`. After it runs, every table from raw staging through the model layer is queryable from the DuckDB CLI or any BI tool with a DuckDB connector. A downstream analyst in your team can run `SELECT * FROM feat_hiv_cascade WHERE country_iso3 = 'KEN'` without touching the notebook. In M&E work, where data lineage questions come up at every review, that matters.
 
 The combined record count across all five staging tables is in the low tens of thousands. Running this on BigQuery would be the wrong choice for the actual data volume. DuckDB fits the problem as scoped. It also has room to grow: county-level DHIS2 data for all 47 counties at monthly cadence stays well within what DuckDB handles in-process.
 
@@ -215,13 +210,13 @@ This keeps the ingestion layer separate from the analytical layer.
 │  EXTRACT                                                               │
 │  Source 1: WHO GHO API   → df_who_raw   (7 indicators × 5 countries) │
 │  Source 2: World Bank API → df_wb_raw   (8 indicators × 5 countries) │
-│  Source 3: UNAIDS ZIP    → df_unaids    (95-95-95 cascade estimates)  │
+│  Source 3: UNAIDS ZIP    → df_unaids    (HIV burden estimates)         │
 │  Source 4: Global Fund   → df_gf_grants + df_gf_disb                 │
 └──────────────────────────────┬───────────────────────────────────────┘
                                │ pandas DataFrames
 ┌──────────────────────────────▼───────────────────────────────────────┐
 │  LOAD (DuckDB Staging)                                                 │
-│  stg_who_hiv · stg_worldbank · stg_owid_hiv                           │
+│  stg_who_hiv · stg_worldbank · stg_unaids_hiv                         │
 │  stg_gf_grants · stg_gf_disbursements                                 │
 └──────────────────────────────┬───────────────────────────────────────┘
                                │ SQL CREATE OR REPLACE TABLE
@@ -229,7 +224,7 @@ This keeps the ingestion layer separate from the analytical layer.
 │  TRANSFORM (DuckDB SQL)                                                │
 │                                                                        │
 │  Clean layer:                                                          │
-│  clean_who_hiv · clean_worldbank · clean_owid_hiv                     │
+│  clean_who_hiv · clean_worldbank · clean_unaids_hiv                   │
 │  clean_gf_grants · clean_gf_disbursements                             │
 │                                                                        │
 │  Feature layer (window functions + derived metrics):                  │
@@ -242,7 +237,7 @@ This keeps the ingestion layer separate from the analytical layer.
                                │ .fetchdf() → pandas
 ┌──────────────────────────────▼───────────────────────────────────────┐
 │  ANALYTICS & VISUALISATION (Altair)                                    │
-│  Chart 1: Kenya HIV Burden — PLHIV, On ART, AIDS Deaths               │
+│  Chart 1: Kenya HIV Burden: PLHIV, On ART, AIDS Deaths                │
 │  Chart 2: East Africa ART Coverage Regional Comparison                 │
 │  Chart 3: Kenya HIV Incidence by Programme Era                         │
 │  Chart 4: Health Expenditure vs ART Coverage (scatter)                 │
@@ -258,23 +253,22 @@ This keeps the ingestion layer separate from the analytical layer.
 |-------|-------|-------------|
 | `stg_who_hiv` | Staging | Raw WHO GHO API response |
 | `stg_worldbank` | Staging | Raw World Bank API response |
-| `stg_unaids` | Staging | UNAIDS AIDSInfo estimates, pivoted to long format |
+| `stg_unaids_hiv` | Staging | UNAIDS AIDSInfo estimates, pivoted to long format |
 | `stg_gf_grants` | Staging | Raw Global Fund grant agreements |
 | `stg_gf_disbursements` | Staging | Raw Global Fund disbursements |
 | `clean_who_hiv` | Clean | Typed, filtered, sex dimension normalised |
 | `clean_worldbank` | Clean | Typed, filtered to EA scope |
-| `clean_unaids` | Clean | ISO3-mapped, year-filtered, point estimates only |
+| `clean_unaids_hiv` | Clean | ISO3-mapped, year-filtered UNAIDS estimates |
 | `clean_gf_grants` | Clean | Typed dates, disbursement rate computed |
-| `clean_gf_disbursements` | Clean | Positive amounts only, year cast |
+| `clean_gf_disbursements` | Clean | Typed transaction amounts and years, including adjustments |
 | `feat_hiv_cascade` | Feature | Pivoted cascade metrics + window-function features |
 | `feat_health_system` | Feature | Composite HCW density, investment intensity |
 | `feat_gf_annual` | Feature | Annual + cumulative disbursements by component |
 | `dim_country` | Model | Country dimension with region and focus flag |
 | `dim_time` | Model | Year dimension with policy era and milestone labels |
 | `dim_indicator` | Model | Indicator catalogue with source and domain |
-| `fact_health_indicators` | Model | Unified WHO GHO + World Bank fact table |
+| `fact_health_indicators` | Model | Unified WHO GHO, World Bank, and UNAIDS fact table |
 | `fact_gf_funding` | Model | Global Fund disbursements with grant context |
-| `fact_unaids_cascade` | Model | UNAIDS 95-95-95 cascade with composite score |
 
 ---
 
@@ -287,8 +281,8 @@ This keeps the ingestion layer separate from the analytical layer.
 | `treatment_gap` | `ROUND(plhiv × (1 − art_coverage_pct / 100))` |
 | `art_cov_yoy_pp` | `art_coverage_pct − LAG(art_coverage_pct) OVER (PARTITION BY country ORDER BY year)` |
 | `infections_yoy_delta` | `new_infections − LAG(new_infections) OVER (...)` |
-| `aids_cfr_pct` | `aids_deaths / plhiv × 100` (proxy risk metric) |
-| `est_diagnosed_pct_proxy` | `LEAST(art_coverage_pct × 1.08, 100)` — rough 95-95-95 first-95 proxy |
+| `hiv_deaths_pct_plhiv` | `hiv_related_deaths / plhiv × 100` (proxy risk metric) |
+| `est_diagnosed_pct_proxy` | `LEAST(art_coverage_pct × 1.08, 100)`; rough 95-95-95 first-95 proxy |
 
 ### `feat_health_system`
 
@@ -323,7 +317,7 @@ pip install duckdb pandas requests altair openpyxl
 
 ### Option 1: Direct notebook
 
-Open `kenya_health_pipelinev2.ipynb` in JupyterLab, Jupyter Notebook or VS Code and run all cells in sequence. All installs, API calls, DuckDB operations, and visualisations are in the notebook.
+Open `kenya_health_pipeline_v2.ipynb` in JupyterLab, Jupyter Notebook or VS Code and run all cells in sequence. All installs, API calls, DuckDB operations, and visualisations are in the notebook.
 
 ### Option 2: Terminal runner
 
@@ -349,7 +343,7 @@ python run_kenya_health_pipeline.py --help
 
 Expected runtime on a standard connection: 3 to 6 minutes, most of it waiting on API responses across 15+ calls.
 
-The DuckDB file `kenya_health_data.duckdb` is written to the working directory and persists between sessions. Rerunning the notebook overwrites all tables cleanly via `CREATE OR REPLACE TABLE`.
+The DuckDB file `database/kenya_health_data.duckdb` persists between sessions. Rerunning the notebook overwrites all tables cleanly via `CREATE OR REPLACE TABLE`.
 
 ### Network requirements
 
@@ -409,25 +403,25 @@ These numbers describe the executed notebook run. Live WHO, World Bank, and Glob
 
 - **Geography:** National-level aggregates for Kenya and four East African comparators. County-level disaggregation requires authenticated access to Kenya DHIS2/HMIS.
 - **Recency:** WHO GHO and World Bank data typically lag 1 to 2 years. Most series run to 2022 or 2023.
-- **IHME vs WHO estimates:** IHME GBD mortality estimates are modelled and differ from WHO/UNAIDS surveillance figures. The pipeline includes both; downstream reporting should name the source.
+- **WHO vs UNAIDS estimates:** WHO and UNAIDS estimates are modelled from different source inputs and methods. Downstream reporting should name the source used for each figure.
 - **Global Fund scope:** Covers Kenya grants only. Regional multi-country grants with a Kenya component may be undercounted.
-- **95-95-95 proxy:** The `est_diagnosed_pct_proxy` in `feat_hiv_cascade` is a rough approximation. Authoritative UNAIDS 95-95-95 disaggregated estimates require SPECTRUM model outputs or direct UNAIDS AIDSInfo data.
+- **95-95-95 proxy:** The `est_diagnosed_pct_proxy` in `feat_hiv_cascade` is a rough approximation. Authoritative 95-95-95 measures are not yet staged and require an expanded UNAIDS AIDSInfo extract or SPECTRUM model outputs.
 
 ---
 
 ## Key Insights
 
-1. Kenya's ART coverage rose from approximately 4% in 2005 to above 88% by the early 2020s, the fastest gain in this five-country group. With the estimated number of people receiving ART increasing from about 54,000 to 1.32 million.
-2. HIV incidence fell across every programme era. The COVID-19 period slowed that decline, and the gap to the UNAIDS 2030 target of 0.1 new infections per 1,000 remains wide.
-3. Total HCW per 1,000 (`total_hcw_per_1000`) tracks ART coverage gains more consistently than health expenditure per capita across these five countries. Rwanda's gains correlate with its community health worker deployment, not just spending.
-4. Higher overall health expenditure does not transalte mechanically into higher ART coverage.
-5. Global Fund financing represents a substantial part of the observed HIV response; more than USD 1.0 billion in HIV-component disbursements to Kenya thus far. With the HIV-component disbursements for Kenya peaked in the 2015-2019 cycle and have not grown since. The RSSH component share has grown, meaning a larger share of funding is going to health system strengthening rather than direct HIV programming.
+1. WHO estimates place Kenya's ART coverage at about 4% in 2005 and 88% in 2023. The estimated number of people receiving ART rose from about 54,000 to 1.32 million over the same period.
+2. World Bank estimates show HIV incidence declining over the available series. The pipeline does not estimate the effect of particular programme eras or interventions.
+3. The health-system comparison is descriptive. Workforce density and health expenditure can be compared with ART coverage, but the data do not identify the effect of either measure.
+4. Higher overall health expenditure does not automatically correspond to higher ART coverage in the five-country comparison.
+5. The Global Fund data record more than USD 1.0 billion in Kenya HIV-component disbursements through 2023. Negative adjustments are retained, so annual totals represent net disbursements rather than gross payments.
 
 ---
 
 ## What Next
 
-The pipeline is scoped to what four unauthenticated public APIs can deliver at national level. Each limitation above has a concrete path forward.
+The pipeline is scoped to what four unauthenticated public sources can deliver at national level. Each limitation above has a concrete path forward.
 
 ### County-level disaggregation via KHIS2
 

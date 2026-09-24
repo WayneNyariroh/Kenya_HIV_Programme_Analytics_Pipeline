@@ -207,41 +207,41 @@ This keeps the ingestion layer separate from the analytical layer.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  EXTRACT                                                               │
+│  EXTRACT                                                             │
 │  Source 1: WHO GHO API   → df_who_raw   (7 indicators × 5 countries) │
 │  Source 2: World Bank API → df_wb_raw   (8 indicators × 5 countries) │
-│  Source 3: UNAIDS ZIP    → df_unaids    (HIV burden estimates)         │
+│  Source 3: UNAIDS ZIP    → df_unaids    (HIV burden estimates)       │
 │  Source 4: Global Fund   → df_gf_grants + df_gf_disb                 │
 └──────────────────────────────┬───────────────────────────────────────┘
                                │ pandas DataFrames
 ┌──────────────────────────────▼───────────────────────────────────────┐
-│  LOAD (DuckDB Staging)                                                 │
-│  stg_who_hiv · stg_worldbank · stg_unaids_hiv                         │
-│  stg_gf_grants · stg_gf_disbursements                                 │
+│  LOAD (DuckDB Staging)                                               │
+│  stg_who_hiv · stg_worldbank · stg_unaids_hiv                        │
+│  stg_gf_grants · stg_gf_disbursements                                │
 └──────────────────────────────┬───────────────────────────────────────┘
                                │ SQL CREATE OR REPLACE TABLE
 ┌──────────────────────────────▼───────────────────────────────────────┐
-│  TRANSFORM (DuckDB SQL)                                                │
-│                                                                        │
-│  Clean layer:                                                          │
-│  clean_who_hiv · clean_worldbank · clean_unaids_hiv                   │
-│  clean_gf_grants · clean_gf_disbursements                             │
-│                                                                        │
-│  Feature layer (window functions + derived metrics):                  │
-│  feat_hiv_cascade · feat_health_system · feat_gf_annual               │
-│                                                                        │
-│  Model layer (star schema):                                           │
-│  dim_country · dim_time · dim_indicator                               │
-│  fact_health_indicators · fact_gf_funding                             │
+│  TRANSFORM (DuckDB SQL)                                              │
+│                                                                      │
+│  Clean layer:                                                        │
+│  clean_who_hiv · clean_worldbank · clean_unaids_hiv                  │
+│  clean_gf_grants · clean_gf_disbursements                            │
+│                                                                      │
+│  Feature layer (window functions + derived metrics):                 │
+│  feat_hiv_cascade · feat_health_system · feat_gf_annual              │
+│                                                                      │
+│  Model layer (star schema):                                          │
+│  dim_country · dim_time · dim_indicator                              │
+│  fact_health_indicators · fact_gf_funding                            │
 └──────────────────────────────┬───────────────────────────────────────┘
                                │ .fetchdf() → pandas
 ┌──────────────────────────────▼───────────────────────────────────────┐
-│  ANALYTICS & VISUALISATION (Altair)                                    │
-│  Chart 1: Kenya HIV Burden: PLHIV, On ART, AIDS Deaths                │
-│  Chart 2: East Africa ART Coverage Regional Comparison                 │
-│  Chart 3: Kenya HIV Incidence by Programme Era                         │
-│  Chart 4: Health Expenditure vs ART Coverage (scatter)                 │
-│  Chart 5: Global Fund Kenya Disbursements by Component                 │
+│  ANALYTICS & VISUALISATION (Altair)                                  │
+│  Chart 1: Kenya HIV Burden: PLHIV, On ART, AIDS Deaths               │
+│  Chart 2: East Africa ART Coverage Regional Comparison               │
+│  Chart 3: Kenya HIV Incidence by Programme Era                       │
+│  Chart 4: Health Expenditure vs ART Coverage (scatter)               │
+│  Chart 5: Global Fund Kenya Disbursements by Component               │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -305,12 +305,13 @@ pandas >= 2.2
 requests >= 2.28
 altair >= 6.0
 openpyxl
+vl-convert-python
 ```
 
 ### Install
 
 ```bash
-pip install duckdb pandas requests altair openpyxl
+pip install duckdb pandas requests altair openpyxl vl-convert-python
 ```
 
 ### Run

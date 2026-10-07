@@ -15,6 +15,8 @@ from typing import Any
 
 
 ANSI_ESCAPE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+PROJECT_OWNER = "Wayne Willis Omondi"
+PROJECT_NAME = "Kenya HIV Programme Analytics Pipeline"
 
 
 def configure_terminal() -> None:
@@ -23,6 +25,14 @@ def configure_terminal() -> None:
         reconfigure = getattr(stream, "reconfigure", None)
         if reconfigure is not None:
             reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
+
+
+def print_banner() -> None:
+    """Print project attribution before notebook execution begins."""
+    print("=" * 78)
+    print(PROJECT_NAME)
+    print(f"Prepared by: {PROJECT_OWNER}")
+    print("=" * 78)
 
 
 def parse_args(project_dir: Path) -> argparse.Namespace:
@@ -279,6 +289,7 @@ def resolve_cli_path(value: Path, project_dir: Path) -> Path:
 
 def main() -> int:
     configure_terminal()
+    print_banner()
     project_dir = Path(__file__).resolve().parent
     args = parse_args(project_dir)
     notebook_path = resolve_cli_path(args.notebook, project_dir)
